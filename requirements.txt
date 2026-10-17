@@ -5,3 +5,4 @@ pymysql
 alembic
 sqlalchemy
 asyncmy
+dotenv
