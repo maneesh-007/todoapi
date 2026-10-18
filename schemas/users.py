@@ -12,14 +12,14 @@ class UserCreateSchema(BaseModel):
 
 class UserSchema(BaseModel):
     id: int
-    name: str
+    username: str
     email: EmailStr
 
     class Config:
         orm_mode = True
 
 class UserUpdateSchema(BaseModel):
-    name: str | None = None
+    username: str | None = None
     password: str | None = None
 
 class UserResponseSchema(BaseModel):

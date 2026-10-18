@@ -1,6 +1,6 @@
 from database import Base
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 class User(Base):
     __tablename__ = "users"
@@ -9,3 +9,5 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    todos: Mapped[list["Todo"]] = relationship("Todo", back_populates="user")
