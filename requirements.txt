@@ -6,3 +6,6 @@ alembic
 sqlalchemy
 asyncmy
 dotenv
+pwdlib[argon2]
+pydantic[email]
+jwt
