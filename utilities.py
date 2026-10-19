@@ -1,10 +1,9 @@
-from typing import Optional
-
 from pwdlib import PasswordHash
 import jwt
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
 # Password hashing
 
@@ -27,36 +26,57 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 security = HTTPBearer()
 
-
-def create_access_token(data: dict,expire:Optional[datetime] = None) -> str:
+def create_access_token(data: dict, expire: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    if expire:
-        expire_time = expire
-    else:
-        expire_time = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire_time})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
 
-def create_refresh_token(data: dict, expire: Optional[datetime] = None) -> str:
+    if expire is None:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})   
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict,expire: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
-    if expire:
-        expire_time = expire
-    else:
-        expire_time = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode.update({"exp": expire_time})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+
+    if expire is None:
+        expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire})   
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def verify_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except jwt.PyJWTError:
+    except jwt.ExpiredSignatureError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token"
+            detail="Token has expired",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-        return None
+    except jwt.InvalidTokenError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
-       
+
+# Auth Dependency   
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security),db:Session = Depends(get_db))-> User:
+    token = credentials.credentials
+    payload = verify_token(token)
+    user_id: int = payload.get("user_id")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return user
+
