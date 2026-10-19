@@ -4,6 +4,9 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from database import get_db
+from models import User
+from typing import Optional
 
 # Password hashing
 
